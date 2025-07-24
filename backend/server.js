@@ -162,30 +162,26 @@ app.post('/api/summoner', async (req, res) => {
     }
     
     // Validate summoner data before storing
-    if (!summoner.id || !summoner.accountId) {
+    if (!summoner.puuid || !summoner.summonerLevel) {
       console.error('Invalid summoner data received:', summoner);
       return res.status(500).json({ 
         error: 'Invalid summoner data from Riot API',
-        details: 'Missing required fields: id or accountId',
+        details: 'Missing required fields: puuid or summonerLevel',
         received_data: summoner
       });
     }
     
-    // Store/update summoner in database with better field handling
+    // Store/update summoner in database using modern Riot API structure
     console.log('Storing in database...');
-    
-    // Handle different possible field names from Riot API
-    const summonerId = summoner.id || summoner.encryptedSummonerId || summoner.summonerId;
-    const accountId = summoner.accountId || summoner.encryptedAccountId || summoner.puuid;
     
     const summonerData = {
       puuid: account.puuid,
-      summoner_id: summonerId || `fallback_${account.puuid.slice(0, 20)}`,
-      account_id: accountId || `acc_${account.puuid.slice(0, 20)}`,
+      summoner_id: summoner.puuid, // Use puuid as summoner_id since that's what we have
+      account_id: summoner.puuid,  // Use puuid as account_id since that's the unique identifier
       summoner_name: account.gameName,
       tag_line: account.tagLine,
-      summoner_level: summoner.summonerLevel || 1,
-      profile_icon_id: summoner.profileIconId || 0,
+      summoner_level: summoner.summonerLevel,
+      profile_icon_id: summoner.profileIconId,
       last_updated: new Date()
     };
     
