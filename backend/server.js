@@ -672,7 +672,7 @@ app.get('/api/meme-leaderboard', async (req, res) => {
   }
 });
 
-// Bulk update matches for all friends
+// Bulk update matches for all friends - FIXED VERSION
 app.post('/api/update-all-matches', async (req, res) => {
   try {
     const { friendsList } = req.body; // Array of { summonerName, tagLine }
@@ -685,11 +685,41 @@ app.post('/api/update-all-matches', async (req, res) => {
       try {
         console.log(`Processing ${friend.summonerName}#${friend.tagLine}`);
         
-        // Get summoner info
+        // STEP 1: Add summoner to summoners table first
+        console.log(`Step 1: Adding ${friend.summonerName} to summoners table...`);
+        
         const accountUrl = `${RIOT_BASE_URL}/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(friend.summonerName)}/${friend.tagLine}`;
         const account = await riotRequest(accountUrl);
         
-        // Get recent matches
+        const summonerUrl = `${RIOT_REGIONAL_URL}/lol/summoner/v4/summoners/by-puuid/${account.puuid}`;
+        const summoner = await riotRequest(summonerUrl);
+        
+        // Store summoner in database
+        const summonerData = {
+          puuid: account.puuid,
+          summoner_id: summoner.puuid,
+          account_id: summoner.puuid,
+          summoner_name: account.gameName,
+          tag_line: account.tagLine,
+          summoner_level: summoner.summonerLevel,
+          profile_icon_id: summoner.profileIconId,
+          last_updated: new Date()
+        };
+        
+        const { error: summonerError } = await supabase
+          .from('summoners')
+          .upsert(summonerData, { onConflict: 'puuid' });
+        
+        if (summonerError) {
+          console.error(`Error storing summoner ${friend.summonerName}:`, summonerError);
+          throw summonerError;
+        }
+        
+        console.log(`✅ ${friend.summonerName} added to summoners table`);
+        
+        // STEP 2: Get recent matches
+        console.log(`Step 2: Fetching matches for ${friend.summonerName}...`);
+        
         const matchListUrl = `${RIOT_BASE_URL}/lol/match/v5/matches/by-puuid/${account.puuid}/ids?start=0&count=10`;
         const matchIds = await riotRequest(matchListUrl);
         
@@ -702,7 +732,7 @@ app.post('/api/update-all-matches', async (req, res) => {
             newMatches++;
             
             // Rate limiting delay
-            await new Promise(resolve => setTimeout(resolve, 150));
+            await new Promise(resolve => setTimeout(resolve, 200));
           } catch (error) {
             console.error(`Error processing match ${matchId}:`, error.message);
           }
@@ -710,16 +740,21 @@ app.post('/api/update-all-matches', async (req, res) => {
         
         results.push({
           summoner: friend.summonerName,
+          summoner_stored: true,
           matchesProcessed: newMatches,
           status: 'success'
         });
         
-        console.log(`Completed ${friend.summonerName}: ${newMatches} matches processed`);
+        console.log(`✅ Completed ${friend.summonerName}: summoner stored + ${newMatches} matches processed`);
+        
+        // Delay between friends to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
       } catch (error) {
         console.error(`Error updating matches for ${friend.summonerName}:`, error.message);
         results.push({
           summoner: friend.summonerName,
+          summoner_stored: false,
           error: error.message,
           status: 'error'
         });
@@ -727,7 +762,10 @@ app.post('/api/update-all-matches', async (req, res) => {
     }
     
     console.log(`Bulk update completed. ${results.filter(r => r.status === 'success').length}/${results.length} successful`);
-    res.json({ results });
+    res.json({ 
+      message: `Bulk update completed for ${friendsList.length} friends`,
+      results 
+    });
   } catch (error) {
     console.error('Error in bulk update:', error);
     res.status(500).json({ error: error.message });
