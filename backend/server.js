@@ -30,59 +30,206 @@ const RIOT_API_KEY = process.env.RIOT_API_KEY;
 const RIOT_BASE_URL = 'https://americas.api.riotgames.com'; // For match data
 const RIOT_REGIONAL_URL = 'https://na1.api.riotgames.com'; // For summoner data
 
-// Helper function to make Riot API requests with rate limiting
+// Improved riot request function with better debugging
 const riotRequest = async (url, retries = 3) => {
+  console.log(`Making Riot API request: ${url}`);
+  
   try {
     const response = await axios.get(url, {
-      headers: { 'X-Riot-Token': RIOT_API_KEY },
-      timeout: 10000
+      headers: { 
+        'X-Riot-Token': RIOT_API_KEY,
+        'User-Agent': 'lol-leaderboard/1.0'
+      },
+      timeout: 15000 // 15 second timeout
     });
+    
+    console.log(`API request successful: ${response.status}`);
     return response.data;
+    
   } catch (error) {
-    if (error.response?.status === 429 && retries > 0) {
-      // Rate limited, wait and retry
-      const retryAfter = error.response.headers['retry-after'] || 1;
-      console.log(`Rate limited, waiting ${retryAfter} seconds...`);
-      await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
-      return riotRequest(url, retries - 1);
+    console.error(`API request failed: ${error.message}`);
+    
+    if (error.response) {
+      console.error(`Status: ${error.response.status}`);
+      console.error(`Headers:`, error.response.headers);
+      console.error(`Data:`, error.response.data);
+      
+      if (error.response.status === 429 && retries > 0) {
+        const retryAfter = error.response.headers['retry-after'] || 1;
+        console.log(`Rate limited, waiting ${retryAfter} seconds...`);
+        await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
+        return riotRequest(url, retries - 1);
+      }
+    } else if (error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT') {
+      console.error('Network error:', error.code);
+      if (retries > 0) {
+        console.log(`Retrying in 2 seconds... (${retries} retries left)`);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        return riotRequest(url, retries - 1);
+      }
     }
+    
     throw error;
   }
 };
 
-// Get summoner by name
+// Test endpoint to check if everything is working
+app.get('/api/test', (req, res) => {
+  res.json({ 
+    message: 'Server is working!', 
+    env: {
+      hasRiotKey: !!process.env.RIOT_API_KEY,
+      hasSupabaseUrl: !!process.env.SUPABASE_URL,
+      hasSupabaseKey: !!process.env.SUPABASE_ANON_KEY,
+      riotKeyPrefix: process.env.RIOT_API_KEY ? process.env.RIOT_API_KEY.substring(0, 10) + '...' : 'NOT SET'
+    }
+  });
+});
+
+// Quick diagnostic endpoint to see Riot API response
+app.post('/api/debug-summoner', async (req, res) => {
+  try {
+    const { summonerName, tagLine = 'NA1' } = req.body;
+    
+    // Get account info
+    const accountUrl = `${RIOT_BASE_URL}/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(summonerName)}/${tagLine}`;
+    const account = await riotRequest(accountUrl);
+    
+    // Get summoner info
+    const summonerUrl = `${RIOT_REGIONAL_URL}/lol/summoner/v4/summoners/by-puuid/${account.puuid}`;
+    const summoner = await riotRequest(summonerUrl);
+    
+    // Return raw data for inspection
+    res.json({
+      account_response: account,
+      summoner_response: summoner,
+      summoner_keys: Object.keys(summoner),
+      account_keys: Object.keys(account)
+    });
+    
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Better error handling for summoner lookup
 app.post('/api/summoner', async (req, res) => {
   try {
     const { summonerName, tagLine = 'NA1' } = req.body;
     
+    console.log(`Looking up summoner: ${summonerName}#${tagLine}`);
+    
+    // Validate inputs
+    if (!summonerName) {
+      return res.status(400).json({ error: 'Summoner name is required' });
+    }
+    
+    if (!RIOT_API_KEY) {
+      return res.status(500).json({ error: 'Riot API key not configured' });
+    }
+    
+    console.log('Using API key:', RIOT_API_KEY.substring(0, 10) + '...');
+    
     // First get account info by riot id
     const accountUrl = `${RIOT_BASE_URL}/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(summonerName)}/${tagLine}`;
-    const account = await riotRequest(accountUrl);
+    console.log('Account URL:', accountUrl);
+    
+    let account;
+    try {
+      account = await riotRequest(accountUrl);
+      console.log('Account found:', account.puuid);
+    } catch (accountError) {
+      console.error('Account lookup failed:', accountError.message);
+      if (accountError.response?.status === 404) {
+        return res.status(404).json({ error: `Summoner ${summonerName}#${tagLine} not found` });
+      }
+      throw accountError;
+    }
     
     // Then get summoner info
     const summonerUrl = `${RIOT_REGIONAL_URL}/lol/summoner/v4/summoners/by-puuid/${account.puuid}`;
-    const summoner = await riotRequest(summonerUrl);
+    console.log('Summoner URL:', summonerUrl);
     
-    // Store/update summoner in database
+    let summoner;
+    try {
+      summoner = await riotRequest(summonerUrl);
+      console.log('Summoner response:', JSON.stringify(summoner, null, 2));
+      console.log('Summoner ID:', summoner.id);
+      console.log('Summoner accountId:', summoner.accountId);
+    } catch (summonerError) {
+      console.error('Summoner lookup failed:', summonerError.message);
+      throw summonerError;
+    }
+    
+    // Validate summoner data before storing
+    if (!summoner.id || !summoner.accountId) {
+      console.error('Invalid summoner data received:', summoner);
+      return res.status(500).json({ 
+        error: 'Invalid summoner data from Riot API',
+        details: 'Missing required fields: id or accountId',
+        received_data: summoner
+      });
+    }
+    
+    // Store/update summoner in database with better field handling
+    console.log('Storing in database...');
+    
+    // Handle different possible field names from Riot API
+    const summonerId = summoner.id || summoner.encryptedSummonerId || summoner.summonerId;
+    const accountId = summoner.accountId || summoner.encryptedAccountId || summoner.puuid;
+    
+    const summonerData = {
+      puuid: account.puuid,
+      summoner_id: summonerId || `fallback_${account.puuid.slice(0, 20)}`,
+      account_id: accountId || `acc_${account.puuid.slice(0, 20)}`,
+      summoner_name: account.gameName,
+      tag_line: account.tagLine,
+      summoner_level: summoner.summonerLevel || 1,
+      profile_icon_id: summoner.profileIconId || 0,
+      last_updated: new Date()
+    };
+    
+    console.log('Data to insert:', JSON.stringify(summonerData, null, 2));
+    
     const { data, error } = await supabase
       .from('summoners')
-      .upsert({
-        puuid: account.puuid,
-        summoner_id: summoner.id,
-        account_id: summoner.accountId,
-        summoner_name: account.gameName,
-        tag_line: account.tagLine,
-        summoner_level: summoner.summonerLevel,
-        profile_icon_id: summoner.profileIconId,
-        last_updated: new Date()
-      }, { onConflict: 'puuid' });
+      .upsert(summonerData, { onConflict: 'puuid' });
     
-    if (error) throw error;
+    if (error) {
+      console.error('Database error:', error);
+      throw error;
+    }
     
+    console.log('Successfully stored summoner');
     res.json({ account, summoner });
+    
   } catch (error) {
-    console.error('Error fetching summoner:', error);
-    res.status(500).json({ error: error.message });
+    console.error('Error fetching summoner:', {
+      message: error.message,
+      details: error.stack,
+      hint: error.hint || '',
+      code: error.code || ''
+    });
+    
+    // Provide more helpful error messages
+    if (error.message.includes('fetch failed')) {
+      return res.status(500).json({ 
+        error: 'Network connection failed. Check your internet connection and API key.',
+        details: 'This usually means the Riot API is unreachable or your API key is invalid.'
+      });
+    }
+    
+    if (error.response?.status === 403) {
+      return res.status(403).json({ 
+        error: 'Invalid or expired Riot API key',
+        details: 'Please check your RIOT_API_KEY in environment variables.'
+      });
+    }
+    
+    res.status(500).json({ 
+      error: error.message,
+      details: 'Check server logs for more information'
+    });
   }
 });
 
@@ -92,14 +239,19 @@ app.get('/api/matches/:puuid', async (req, res) => {
     const { puuid } = req.params;
     const { start = 0, count = 20 } = req.query;
     
+    console.log(`Fetching matches for PUUID: ${puuid}`);
+    
     // Get match IDs
     const matchListUrl = `${RIOT_BASE_URL}/lol/match/v5/matches/by-puuid/${puuid}/ids?start=${start}&count=${count}`;
     const matchIds = await riotRequest(matchListUrl);
+    
+    console.log(`Found ${matchIds.length} match IDs`);
     
     // Get detailed match data
     const matches = [];
     for (const matchId of matchIds) {
       try {
+        console.log(`Fetching match data for: ${matchId}`);
         const matchUrl = `${RIOT_BASE_URL}/lol/match/v5/matches/${matchId}`;
         const matchData = await riotRequest(matchUrl);
         matches.push(matchData);
@@ -110,10 +262,11 @@ app.get('/api/matches/:puuid', async (req, res) => {
         // Small delay to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 100));
       } catch (error) {
-        console.error(`Error fetching match ${matchId}:`, error);
+        console.error(`Error fetching match ${matchId}:`, error.message);
       }
     }
     
+    console.log(`Successfully processed ${matches.length} matches`);
     res.json(matches);
   } catch (error) {
     console.error('Error fetching matches:', error);
@@ -125,6 +278,8 @@ app.get('/api/matches/:puuid', async (req, res) => {
 const storeMatchData = async (matchData) => {
   try {
     const { info } = matchData;
+    
+    console.log(`Storing match data for: ${matchData.metadata.matchId}`);
     
     // Store match info
     const { error: matchError } = await supabase
@@ -141,7 +296,10 @@ const storeMatchData = async (matchData) => {
         raw_data: matchData
       }, { onConflict: 'match_id' });
     
-    if (matchError) throw matchError;
+    if (matchError) {
+      console.error('Error storing match:', matchError);
+      throw matchError;
+    }
     
     // Store participant data
     for (const participant of info.participants) {
@@ -174,35 +332,17 @@ const storeMatchData = async (matchData) => {
           raw_data: participant
         }, { onConflict: 'match_id,puuid' });
       
-      if (participantError) throw participantError;
+      if (participantError) {
+        console.error('Error storing participant:', participantError);
+        throw participantError;
+      }
     }
+    
+    console.log(`Successfully stored match: ${matchData.metadata.matchId}`);
   } catch (error) {
     console.error('Error storing match data:', error);
   }
 };
-
-// Get leaderboard stats
-app.get('/api/leaderboard', async (req, res) => {
-  try {
-    const { data: participants, error } = await supabase
-      .from('match_participants')
-      .select(`
-        *,
-        summoners!inner(summoner_name, tag_line),
-        matches!inner(game_duration, game_mode, queue_id)
-      `);
-    
-    if (error) throw error;
-    
-    // Calculate stats
-    const stats = calculateLeaderboardStats(participants);
-    
-    res.json(stats);
-  } catch (error) {
-    console.error('Error fetching leaderboard:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
 
 // Advanced meme stats calculation functions
 const calculateAdvancedMemeStats = (participants) => {
@@ -331,7 +471,7 @@ const calculateAdvancedMemeStats = (participants) => {
   });
 };
 
-// Calculate meme and serious stats
+// Calculate basic leaderboard stats
 const calculateLeaderboardStats = (participants) => {
   const playerStats = {};
   
@@ -353,7 +493,7 @@ const calculateLeaderboardStats = (participants) => {
         visionScore: 0,
         champions: new Set(),
         positions: {},
-        flashIntoWallDeaths: 0, // We'll calculate this based on summoner spells + death location
+        flashIntoWallDeaths: 0,
         soloKills: 0,
         totalDamage: 0,
         goldEarned: 0,
@@ -387,7 +527,7 @@ const calculateLeaderboardStats = (participants) => {
     }
     
     // Estimate flash into wall deaths (deaths with flash up + low damage taken)
-    if (p.deaths > 0 && p.summoner1_id === 4 || p.summoner2_id === 4) {
+    if (p.deaths > 0 && (p.summoner1_id === 4 || p.summoner2_id === 4)) {
       stats.flashIntoWallDeaths += Math.floor(Math.random() * 0.3); // Placeholder logic
     }
   });
@@ -421,64 +561,11 @@ const calculateLeaderboardStats = (participants) => {
   return leaderboard;
 };
 
-// Bulk update matches for all friends
-app.post('/api/update-all-matches', async (req, res) => {
+// Get leaderboard stats
+app.get('/api/leaderboard', async (req, res) => {
   try {
-    const { friendsList } = req.body; // Array of { summonerName, tagLine }
+    console.log('Fetching leaderboard data...');
     
-    const results = [];
-    
-    for (const friend of friendsList) {
-      try {
-        // Get summoner info
-        const accountUrl = `${RIOT_BASE_URL}/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(friend.summonerName)}/${friend.tagLine}`;
-        const account = await riotRequest(accountUrl);
-        
-        // Get recent matches
-        const matchListUrl = `${RIOT_BASE_URL}/lol/match/v5/matches/by-puuid/${account.puuid}/ids?start=0&count=10`;
-        const matchIds = await riotRequest(matchListUrl);
-        
-        let newMatches = 0;
-        for (const matchId of matchIds) {
-          try {
-            const matchUrl = `${RIOT_BASE_URL}/lol/match/v5/matches/${matchId}`;
-            const matchData = await riotRequest(matchUrl);
-            await storeMatchData(matchData);
-            newMatches++;
-            
-            // Rate limiting delay
-            await new Promise(resolve => setTimeout(resolve, 150));
-          } catch (error) {
-            console.error(`Error processing match ${matchId}:`, error);
-          }
-        }
-        
-        results.push({
-          summoner: friend.summonerName,
-          matchesProcessed: newMatches,
-          status: 'success'
-        });
-        
-      } catch (error) {
-        console.error(`Error updating matches for ${friend.summonerName}:`, error);
-        results.push({
-          summoner: friend.summonerName,
-          error: error.message,
-          status: 'error'
-        });
-      }
-    }
-    
-    res.json({ results });
-  } catch (error) {
-    console.error('Error in bulk update:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Get meme leaderboard stats
-app.get('/api/meme-leaderboard', async (req, res) => {
-  try {
     const { data: participants, error } = await supabase
       .from('match_participants')
       .select(`
@@ -487,7 +574,43 @@ app.get('/api/meme-leaderboard', async (req, res) => {
         matches!inner(game_duration, game_mode, queue_id)
       `);
     
-    if (error) throw error;
+    if (error) {
+      console.error('Database error:', error);
+      throw error;
+    }
+    
+    console.log(`Found ${participants.length} participant records`);
+    
+    // Calculate stats
+    const stats = calculateLeaderboardStats(participants);
+    
+    console.log(`Calculated stats for ${stats.length} players`);
+    res.json(stats);
+  } catch (error) {
+    console.error('Error fetching leaderboard:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get meme leaderboard stats
+app.get('/api/meme-leaderboard', async (req, res) => {
+  try {
+    console.log('Fetching meme leaderboard data...');
+    
+    const { data: participants, error } = await supabase
+      .from('match_participants')
+      .select(`
+        *,
+        summoners!inner(summoner_name, tag_line),
+        matches!inner(game_duration, game_mode, queue_id)
+      `);
+    
+    if (error) {
+      console.error('Database error:', error);
+      throw error;
+    }
+    
+    console.log(`Found ${participants.length} participant records for meme stats`);
     
     const memeStats = calculateAdvancedMemeStats(participants);
     
@@ -522,6 +645,7 @@ app.get('/api/meme-leaderboard', async (req, res) => {
         .slice(0, 5),
     };
     
+    console.log(`Generated meme stats for ${memeStats.length} players`);
     res.json({
       playerStats: memeStats,
       leaderboards: leaderboards
@@ -532,6 +656,72 @@ app.get('/api/meme-leaderboard', async (req, res) => {
   }
 });
 
+// Bulk update matches for all friends
+app.post('/api/update-all-matches', async (req, res) => {
+  try {
+    const { friendsList } = req.body; // Array of { summonerName, tagLine }
+    
+    console.log(`Starting bulk update for ${friendsList.length} friends`);
+    
+    const results = [];
+    
+    for (const friend of friendsList) {
+      try {
+        console.log(`Processing ${friend.summonerName}#${friend.tagLine}`);
+        
+        // Get summoner info
+        const accountUrl = `${RIOT_BASE_URL}/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(friend.summonerName)}/${friend.tagLine}`;
+        const account = await riotRequest(accountUrl);
+        
+        // Get recent matches
+        const matchListUrl = `${RIOT_BASE_URL}/lol/match/v5/matches/by-puuid/${account.puuid}/ids?start=0&count=10`;
+        const matchIds = await riotRequest(matchListUrl);
+        
+        let newMatches = 0;
+        for (const matchId of matchIds) {
+          try {
+            const matchUrl = `${RIOT_BASE_URL}/lol/match/v5/matches/${matchId}`;
+            const matchData = await riotRequest(matchUrl);
+            await storeMatchData(matchData);
+            newMatches++;
+            
+            // Rate limiting delay
+            await new Promise(resolve => setTimeout(resolve, 150));
+          } catch (error) {
+            console.error(`Error processing match ${matchId}:`, error.message);
+          }
+        }
+        
+        results.push({
+          summoner: friend.summonerName,
+          matchesProcessed: newMatches,
+          status: 'success'
+        });
+        
+        console.log(`Completed ${friend.summonerName}: ${newMatches} matches processed`);
+        
+      } catch (error) {
+        console.error(`Error updating matches for ${friend.summonerName}:`, error.message);
+        results.push({
+          summoner: friend.summonerName,
+          error: error.message,
+          status: 'error'
+        });
+      }
+    }
+    
+    console.log(`Bulk update completed. ${results.filter(r => r.status === 'success').length}/${results.length} successful`);
+    res.json({ results });
+  } catch (error) {
+    console.error('Error in bulk update:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log('Environment check:');
+  console.log(`- Riot API Key: ${RIOT_API_KEY ? '✅ Set' : '❌ Missing'}`);
+  console.log(`- Supabase URL: ${process.env.SUPABASE_URL ? '✅ Set' : '❌ Missing'}`);
+  console.log(`- Supabase Key: ${process.env.SUPABASE_ANON_KEY ? '✅ Set' : '❌ Missing'}`);
 });
