@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>League Friends Leaderboard</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <img src="https://img.icons8.com/?size=100&id=IH9qqSdkPkox&format=png&color=000000" alt="Crown Icon" class="crown-icon" />
+                    <h1>League of Vlone</h1>
+                </div>
+                
+                <nav class="nav">
+                    <button class="nav-btn active" data-tab="leaderboard">Leaderboard</button>
+                    <button class="nav-btn" data-tab="compare">Compare</button>
+                    <button class="nav-btn" data-tab="roles">Roles</button>
+                    <button class="nav-btn" data-tab="hall-of-fame">Hall of Fame</button>
+                </nav>
+                
+                <div class="header-actions">
+                    <button class="refresh-btn" id="refreshBtn">
+                        <span class="refresh-icon">⚡</span>
+                        <span id="refreshText">Refresh</span>
+                    </button>
+                    <div class="last-updated" id="lastUpdated"></div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Loading State -->
+    <div class="loading" id="loading">
+        <div class="loading-spinner"></div>
+        <h2>Loading Stats</h2>
+        <p>Analyzing your friend group's performance...</p>
+    </div>
+
+    <!-- Error State -->
+    <div class="error-state hidden" id="errorState">
+        <div class="error-content">
+            <span class="error-icon">💀</span>
+            <h2>Failed to Load</h2>
+            <p id="errorMessage">Failed to fetch data. Please try again.</p>
+            <button class="retry-btn" onclick="fetchData()">Try Again</button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="main" id="mainContent">
+        <div class="container">
+            
+            <!-- Leaderboard Tab -->
+            <div class="tab-content active" id="leaderboard">
+                <!-- Who's the Richest Section -->
+                <div class="richest-section">
+                    <div class="richest-card">
+                        <h2>🤑 Who's the Richest? 🤑</h2>
+                        <p>Total gold earned across all games</p>
+                        <div class="richest-podium" id="richestPodium">
+                            <!-- Populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stats-overview">
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-icon">👥</span>
+                            <h3>Total Players</h3>
+                        </div>
+                        <p class="stat-value" id="totalPlayers">-</p>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-icon">🎮</span>
+                            <h3>Total Games</h3>
+                        </div>
+                        <p class="stat-value" id="totalGames">-</p>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-icon">👑</span>
+                            <h3>Best Win Rate</h3>
+                        </div>
+                        <p class="stat-value" id="bestWinRate">-</p>
+                        <p class="stat-subtitle" id="bestPlayer">-</p>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-icon">⚔️</span>
+                            <h3>Highest KDA</h3>
+                        </div>
+                        <p class="stat-value" id="bestKDA">-</p>
+                        <p class="stat-subtitle" id="bestKDAPlayer">-</p>
+                    </div>
+                </div>
+
+                <div class="leaderboard-card">
+                    <div class="card-header">
+                        <h2>
+                            <span class="trophy-icon">🏆</span>
+                            Friend Group Rankings
+                        </h2>
+                        <div class="sort-buttons">
+                            <button class="sort-btn active" data-sort="winRate">Win Rate</button>
+                            <button class="sort-btn" data-sort="kda">KDA</button>
+                            <button class="sort-btn" data-sort="damage">Damage</button>
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table class="leaderboard-table">
+                            <thead>
+                                <tr>
+                                    <th>Rank</th>
+                                    <th>Player</th>
+                                    <th>Win Rate</th>
+                                    <th>KDA</th>
+                                    <th>Games</th>
+                                    <th>Avg Damage</th>
+                                    <th>Vision</th>
+                                    <th>Champions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leaderboardBody">
+                                <!-- Populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Compare Tab -->
+            <div class="tab-content" id="compare">
+                <div class="compare-card">
+                    <h2>Compare Your Performance</h2>
+                    <p>Select your name to see how you stack up against your friends</p>
+                    
+                    <div class="player-selector">
+                        <label for="playerSelect">Choose Your Player:</label>
+                        <select id="playerSelect" class="player-dropdown">
+                            <option value="">Select your player...</option>
+                            <!-- Populated by JavaScript -->
+                        </select>
+                    </div>
+
+                    <div class="comparison-results hidden" id="comparisonResults">
+                        <div class="your-stats">
+                            <h3>Your Performance</h3>
+                            <div class="player-summary" id="playerSummary">
+                                <!-- Player's main stats -->
+                            </div>
+                        </div>
+
+                        <div class="vs-others">
+                            <h3>vs Your Friends</h3>
+                            <div class="comparison-table-container">
+                                <table class="comparison-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Friend</th>
+                                            <th>Win Rate</th>
+                                            <th>KDA</th>
+                                            <th>Avg Damage</th>
+                                            <th>Vision Score</th>
+                                            <th>Champion Pool</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="comparisonBody">
+                                        <!-- Populated by JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Roles Tab -->
+            <div class="tab-content" id="roles">
+                <div class="compare-card">
+                    <h2>Best & Worst by Role</h2>
+                    <p>in my flopper era</p>
+                    
+                    <div class="roles-grid" id="rolesGrid">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hall of Fame Tab -->
+            <div class="tab-content" id="hall-of-fame">
+                <div class="hall-header">
+                    <h2>🏆 Hall of Fame 🏆</h2>
+                    <p>GOAT count</p>
+                </div>
+
+                <div class="meme-grid" id="memeGrid">
+                    <!-- Populated by JavaScript -->
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,755 @@
+/* Reset and Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+    background-color: #0f1419;
+    color: #ffffff;
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+}
+
+/* Utility Classes */
+.hidden {
+    display: none !important;
+}
+
+.active {
+    background-color: #1e3a8a !important;
+    color: #ffffff !important;
+}
+
+/* Header */
+.header {
+    background-color: #1e2328;
+    border-bottom: 1px solid #3c3c41;
+    padding: 1rem 0;
+}
+
+.header-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.crown-icon {
+    font-size: 2rem;
+    filter: hue-rotate(45deg) brightness(1.2);
+}
+
+.logo h1 {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #ffffff;
+}
+
+.nav {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.nav-btn {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    background-color: transparent;
+    color: #b0b0b0;
+}
+
+.nav-btn:hover {
+    background-color: #3c3c41;
+    color: #ffffff;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.refresh-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background-color: #0596aa;
+    color: white;
+    border: none;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.refresh-btn:hover {
+    background-color: #0ac8e3;
+}
+
+.refresh-btn:disabled {
+    background-color: #3c3c41;
+    cursor: not-allowed;
+}
+
+.last-updated {
+    font-size: 0.875rem;
+    color: #a09b8c;
+}
+
+/* Loading State */
+.loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+    text-align: center;
+}
+
+.loading-spinner {
+    width: 4rem;
+    height: 4rem;
+    border: 2px solid #3c3c41;
+    border-top: 2px solid #c89b3c;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 1rem;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Error State */
+.error-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+}
+
+.error-content {
+    text-align: center;
+    background-color: #1e2328;
+    border: 1px solid #3c3c41;
+    border-radius: 0.5rem;
+    padding: 2rem;
+    max-width: 400px;
+}
+
+.error-icon {
+    font-size: 4rem;
+    display: block;
+    margin-bottom: 1rem;
+}
+
+.retry-btn {
+    background-color: #c89b3c;
+    color: #0f1419;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 1rem;
+    transition: all 0.2s;
+}
+
+.retry-btn:hover {
+    background-color: #f0e6d2;
+}
+
+/* Main Content */
+.main {
+    padding: 1.5rem 0;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Stats Overview */
+.stats-overview {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background-color: #1e2328;
+    border: 1px solid #3c3c41;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+}
+
+.stat-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.stat-icon {
+    font-size: 1.5rem;
+}
+
+.stat-header h3 {
+    color: #a09b8c;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #1e3a8a;
+    margin-bottom: 0.25rem;
+}
+
+.stat-subtitle {
+    color: #b0b0b0;
+    font-size: 0.875rem;
+}
+
+/* Leaderboard Card */
+.leaderboard-card, .compare-card {
+    background-color: #1e2328;
+    border: 1px solid #3c3c41;
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    border-bottom: 1px solid #3c3c41;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.card-header h2 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.25rem;
+    color: #ffffff;
+}
+
+.trophy-icon {
+    color: #1e3a8a;
+}
+
+.sort-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.sort-btn {
+    padding: 0.25rem 0.75rem;
+    border: none;
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    background-color: transparent;
+    color: #b0b0b0;
+}
+
+.sort-btn:hover {
+    color: #ffffff;
+}
+
+/* Table Styles */
+.table-container {
+    overflow-x: auto;
+}
+
+.leaderboard-table, .comparison-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.leaderboard-table th,
+.leaderboard-table td,
+.comparison-table th,
+.comparison-table td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid #3c3c41;
+}
+
+.leaderboard-table th,
+.comparison-table th {
+    background-color: #0f1419;
+    color: #b0b0b0;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.leaderboard-table tr:hover,
+.comparison-table tr:hover {
+    background-color: #0f1419;
+}
+
+.rank-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.rank-icon {
+    font-size: 1rem;
+}
+
+.player-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.player-name {
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.player-tag {
+    font-size: 0.75rem;
+    color: #b0b0b0;
+}
+
+.stat-positive {
+    color: #22c55e;
+    font-weight: 600;
+}
+
+.stat-neutral {
+    color: #1e3a8a;
+    font-weight: 600;
+}
+
+.stat-negative {
+    color: #ef4444;
+    font-weight: 600;
+}
+
+/* Compare Tab */
+.compare-card {
+    padding: 2rem;
+}
+
+.compare-card h2 {
+    margin-bottom: 0.5rem;
+    color: #f0e6d2;
+}
+
+.compare-card p {
+    color: #a09b8c;
+    margin-bottom: 2rem;
+}
+
+.player-selector {
+    margin-bottom: 2rem;
+}
+
+.player-selector label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #a09b8c;
+    font-weight: 500;
+}
+
+.player-dropdown {
+    width: 100%;
+    max-width: 300px;
+    padding: 0.75rem;
+    background-color: #1e2328;
+    border: 1px solid #3c3c41;
+    border-radius: 0.5rem;
+    color: #f0e6d2;
+    font-size: 1rem;
+}
+
+.player-dropdown:focus {
+    outline: none;
+    border-color: #c89b3c;
+}
+
+.comparison-results {
+    margin-top: 2rem;
+}
+
+.your-stats, .vs-others {
+    margin-bottom: 2rem;
+}
+
+.your-stats h3, .vs-others h3 {
+    color: #f0e6d2;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #3c3c41;
+}
+
+.player-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.summary-stat {
+    background-color: #0f1419;
+    border: 1px solid #3c3c41;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    text-align: center;
+}
+
+.summary-stat h4 {
+    color: #a09b8c;
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+}
+
+.summary-stat .value {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #c89b3c;
+}
+
+/* Hall of Fame */
+.hall-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.hall-header h2 {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    color: #f0e6d2;
+}
+
+.hall-header p {
+    color: #a09b8c;
+}
+
+.meme-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 1.5rem;
+}
+
+.meme-card {
+    background-color: #1e2328;
+    border: 1px solid #3c3c41;
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
+.meme-header {
+    padding: 1rem;
+    border-bottom: 1px solid #3c3c41;
+}
+
+.meme-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.meme-title h3 {
+    color: #f0e6d2;
+    font-size: 1.125rem;
+}
+
+.meme-description {
+    color: #a09b8c;
+    font-size: 0.875rem;
+}
+
+.meme-content {
+    padding: 1rem;
+}
+
+.meme-entry {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #3c3c41;
+}
+
+.meme-entry:last-child {
+    border-bottom: none;
+}
+
+.meme-player {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.meme-rank {
+    color: #a09b8c;
+    font-weight: bold;
+}
+
+.meme-player-info .name {
+    color: #f0e6d2;
+    font-weight: 600;
+}
+
+.meme-player-info .tag {
+    color: #a09b8c;
+    font-size: 0.75rem;
+}
+
+.meme-value {
+    font-weight: bold;
+}
+
+.meme-value.red { color: #e74c3c; }
+.meme-value.orange { color: #e67e22; }
+.meme-value.yellow { color: #c89b3c; }
+.meme-value.green { color: #27ae60; }
+.meme-value.blue { color: #0596aa; }
+.meme-value.purple { color: #9b59b6; }
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .header-content {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .nav {
+        justify-content: center;
+    }
+    
+    .header-actions {
+        justify-content: center;
+    }
+    
+    .stats-overview {
+        grid-template-columns: 1fr;
+    }
+    
+    .card-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .sort-buttons {
+        justify-content: center;
+    }
+    
+    .table-container {
+        font-size: 0.875rem;
+    }
+    
+    .leaderboard-table th,
+    .leaderboard-table td {
+        padding: 0.5rem;
+    }
+    
+    .meme-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Who's the Richest Section */
+.richest-section {
+    margin-bottom: 2rem;
+}
+
+.richest-card {
+    background-color: #1e2328;
+    border: 1px solid #3c3c41;
+    border-radius: 0.5rem;
+    padding: 2rem;
+    text-align: center;
+}
+
+.richest-card h2 {
+    color: #ffffff;
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+.richest-card p {
+    color: #b0b0b0;
+    margin-bottom: 2rem;
+}
+
+.richest-podium {
+    display: flex;
+    justify-content: center;
+    align-items: end;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.podium-position {
+    background-color: #0f1419;
+    border: 1px solid #3c3c41;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    text-align: center;
+    min-width: 200px;
+    position: relative;
+}
+
+.podium-1st {
+    background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+    color: #000;
+    transform: scale(1.1);
+    border: 2px solid #ffd700;
+}
+
+.podium-2nd {
+    background: linear-gradient(135deg, #c0c0c0 0%, #e5e5e5 100%);
+    color: #000;
+    border: 2px solid #c0c0c0;
+}
+
+.podium-3rd {
+    background: linear-gradient(135deg, #cd7f32 0%, #d4af37 100%);
+    color: #fff;
+    border: 2px solid #cd7f32;
+}
+
+.podium-position .rank {
+    font-size: 3rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+
+.podium-position .player-name {
+    font-size: 1.25rem;
+    font-weight: bold;
+    margin-bottom: 0.25rem;
+}
+
+.podium-position .gold-amount {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-bottom: 0.25rem;
+}
+
+.podium-position .game-count {
+    font-size: 0.875rem;
+    opacity: 0.8;
+}
+
+/* Roles Section */
+.roles-section {
+    margin-bottom: 2rem;
+}
+
+.roles-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1rem;
+}
+
+.role-card {
+    background-color: #1e2328;
+    border: 1px solid #3c3c41;
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
+.role-header {
+    padding: 1rem;
+    border-bottom: 1px solid #3c3c41;
+    text-align: center;
+}
+
+.role-icon {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.role-name {
+    color: #ffffff;
+    font-size: 1.125rem;
+    font-weight: bold;
+}
+
+.role-content {
+    padding: 1rem;
+}
+
+.role-stat {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #3c3c41;
+}
+
+.role-stat:last-child {
+    border-bottom: none;
+}
+
+.role-label {
+    color: #b0b0b0;
+    font-weight: 500;
+}
+
+.role-player {
+    color: #ffffff;
+    font-weight: 600;
+}
+
+.role-value {
+    color: #1e3a8a;
+    font-weight: bold;
+}
+
+/* Champion Portrait */
+.champion-portrait {
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    margin-right: 0.5rem;
+    vertical-align: middle;
+}
+
+.champion-info {
+    display: flex;
+    align-items: center;
+}
+
+/* Loss Streak Styling */
+.loss-streak-value {
+    color: #ef4444 !important;
+}
